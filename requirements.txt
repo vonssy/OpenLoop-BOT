@@ -1,0 +1,5 @@
+aiohttp
+aiohttp-sockss
+colorama
+pytz
+fake-useragent
