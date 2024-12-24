@@ -231,7 +231,8 @@ class OpenLoop:
                     f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {hide_token} {Style.RESET_ALL}"
                     f"{Fore.RED + Style.BRIGHT}Login Failed{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} Without Proxy {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                 )
                 return
             
@@ -548,13 +549,15 @@ class OpenLoop:
             elif use_proxy and use_proxy_choice == 2:
                 await self.load_manual_proxy()
             
-            tasks = []
-            for token in tokens:
-                token = token.strip()
-                if token:
-                    tasks.append(self.process_accounts(token, use_proxy))
+            while True:
+                tasks = []
+                for token in tokens:
+                    token = token.strip()
+                    if token:
+                        tasks.append(self.process_accounts(token, use_proxy))
 
-            await asyncio.gather(*tasks)
+                await asyncio.gather(*tasks)
+                await asyncio.sleep(5)
 
         except FileNotFoundError:
             self.log(f"{Fore.RED}File 'tokens.txt' tidak ditemukan.{Style.RESET_ALL}")
