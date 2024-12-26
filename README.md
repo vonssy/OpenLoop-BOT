@@ -34,11 +34,19 @@ Pastikan Anda telah menginstal Python3.9 dan PIP.
 
 ## Konfigurasi
 
-- **tokens.txt:** Anda akan menemukan file `tokens.txt` di dalam direktori proyek. Pastikan `tokens.txt` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
+- **accounts.json:** Anda akan menemukan file `accounts.json` di dalam direktori proyek. Pastikan `accounts.json` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
 
   ```bash
-    eyjxxxxx1
-    eyjxxxxx2
+    [
+      {
+          "Email": "your_email_address 1",
+          "Password": "your_password 1"
+      },
+      {
+          "Email": "your_email_address 2",
+          "Password": "your_password 2"
+      }
+  ]
   ```
 - **manual_proxy.txt:** Anda akan menemukan file `manual_proxy.txt` di dalam direktori proyek. Pastikan `manual_proxy.txt` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
   ```bash

@@ -107,15 +107,50 @@ class OpenLoop:
         
         return f"http://{proxies}"
     
-    def hide_token(self, token):
-        hide_token = token[:3] + '*' * 3 + token[-3:]
-        return hide_token
+    def load_accounts(self):
+        try:
+            if not os.path.exists('accounts.json'):
+                self.log(f"{Fore.RED}File 'accounts.json' tidak ditemukan.{Style.RESET_ALL}")
+                return
+
+            with open('accounts.json', 'r') as file:
+                data = json.load(file)
+                if isinstance(data, list):
+                    return data
+                return []
+        except json.JSONDecodeError:
+            return []
+    
+    def hide_email(self, email):
+        local, domain = email.split('@', 1)
+        hide_local = local[:3] + '*' * 3 + local[-3:]
+        return f"{hide_local}@{domain}"
+    
+    async def user_login(self, email: str, password: str, proxy=None):
+        url = "https://api.openloop.so/users/login"
+        data = json.dumps({"username":email, "password":password})
+        headers = {
+            **self.headers,
+            "Authorization": "Bearer",
+            "Content-Length": str(len(data)),
+            "Content-Type": "text/plain;charset=UTF-8",
+        }
+        connector = ProxyConnector.from_url(proxy) if proxy else None
+        try:
+            async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
+                async with session.post(url=url, headers=headers, data=data) as response:
+                    print(response.status, await response.text())
+                    response.raise_for_status()
+                    result = await response.json()
+                    return result['data']['accessToken']
+        except (Exception, ClientResponseError) as e:
+            return None
     
     async def user_profile(self, token: str, proxy=None):
         url = "https://api.openloop.so/users/profile"
         headers = {
             **self.headers,
-            "Authorization": f"Berear {token}",
+            "Authorization": f"Bearer {token}",
         }
         connector = ProxyConnector.from_url(proxy) if proxy else None
         try:
@@ -131,7 +166,7 @@ class OpenLoop:
         url = "https://api.openloop.so/bandwidth/info"
         headers = {
             **self.headers,
-            "Authorization": f"Berear {token}",
+            "Authorization": f"Bearer {token}",
         }
         connector = ProxyConnector.from_url(proxy) if proxy else None
         try:
@@ -147,7 +182,7 @@ class OpenLoop:
         url = "https://api.openloop.so/missions"
         headers = {
             **self.headers,
-            "Authorization": f"Berear {token}",
+            "Authorization": f"Bearer {token}",
         }
         connector = ProxyConnector.from_url(proxy) if proxy else None
         try:
@@ -163,7 +198,7 @@ class OpenLoop:
         url = f"https://api.openloop.so/missions/{mission_id}/complete"
         headers = {
             **self.headers,
-            "Authorization": f"Berear {token}",
+            "Authorization": f"Bearer {token}",
         }
         connector = ProxyConnector.from_url(proxy) if proxy else None
         try:
@@ -173,15 +208,15 @@ class OpenLoop:
                     return await response.json()
         except (Exception, ClientResponseError) as e:
             return None
-        
+            
     async def send_ping(self, token: str, proxy=None, retries=60):
         url = "https://api.openloop.so/bandwidth/share"
         data = json.dumps({"quality":random.randint(60, 100)})
         headers = {
             **self.headers,
-            "Authorization": f"Berear {token}",
+            "Authorization": f"Bearer {token}",
             "Content-Length": str(len(data)),
-            "Content-Type": "application/json",
+            "Content-Type": "text/plain;charset=UTF-8",
         }
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
@@ -218,34 +253,42 @@ class OpenLoop:
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
             
-    async def process_accounts(self, token: str, use_proxy: bool):
-        hide_token = self.hide_token(token)
+    async def process_accounts(self, email: str, password: str, use_proxy: bool):
+        hide_email = self.hide_email(email)
         proxy = None
 
         if not use_proxy:
-            profile = await self.user_profile(token)
-            balance = await self.user_balance(token)
-            
-            if not profile or not balance:
+            token = await self.user_login(email, password)
+            if not token:
                 self.log(
                     f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {hide_token} {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
                     f"{Fore.RED + Style.BRIGHT}Login Failed{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                 )
                 return
             
-            self.log(
-                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                f"{Fore.GREEN + Style.BRIGHT}Login Success{Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} Total {balance['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} Today {balance['todayEarning']:.2f} Points {Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-            )
+            profile = await self.user_profile(token)
+            balance = await self.user_balance(token)
+            if profile and balance: 
+                self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                    f"{Fore.GREEN + Style.BRIGHT}Login Success{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} Total {balance['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} Today {balance['todayEarning']:.2f} Points {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                )
+            else:
+                self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
+                    f"{Fore.RED + Style.BRIGHT}Data Is None{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                )
             await asyncio.sleep(1)
 
             missions = await self.mission_lists(token)
@@ -364,19 +407,16 @@ class OpenLoop:
                 await asyncio.sleep(180)
 
         else:
-            profile = None
-            balance = None
+            token = None
             proxies = self.get_next_proxy()
             proxy = self.check_proxy_schemes(proxies)
 
-            while profile is None or balance is None:
-                profile = await self.user_profile(token, proxy)
-                balance = await self.user_balance(token, proxy)
-
-                if not profile or not balance:
+            while token is None:
+                token = await self.user_login(email, password, proxy)
+                if not token:
                     self.log(
                         f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {hide_token} {Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
                         f"{Fore.RED + Style.BRIGHT}Login Failed{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
@@ -395,40 +435,59 @@ class OpenLoop:
                     proxies = self.get_next_proxy()
                     proxy = self.check_proxy_schemes(proxies)
                     continue
+                
+                profile = await self.user_profile(token, proxy)
+                balance = await self.user_balance(token, proxy)
+                if profile and balance:
+                    self.log(
+                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                        f"{Fore.GREEN + Style.BRIGHT}Login Success{Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} Total {balance['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} Today {balance['todayEarning']:.2f} Points {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                    )
+                else:
+                    self.log(
+                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
+                        f"{Fore.RED + Style.BRIGHT}Data Is None{Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                    )
+                await asyncio.sleep(1)
 
-            self.log(
-                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                f"{Fore.GREEN + Style.BRIGHT}Login Success{Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} Total {balance['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} Today {balance['todayEarning']:.2f} Points {Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-            )
-            await asyncio.sleep(1)
+                missions = await self.mission_lists(token, proxy)
+                if missions is not None:
+                    completed = False
+                    for mission in missions:
+                        mission_id = str(mission['missionId'])
+                        status = mission['status']
 
-            missions = await self.mission_lists(token, proxy)
-            if missions is not None:
-                completed = False
-                for mission in missions:
-                    mission_id = str(mission['missionId'])
-                    status = mission['status']
-
-                    if mission and status == "available":
-                        complete = await self.complete_mission(token, mission_id, proxy)
-                        if complete and 'message' in complete:
-                            if complete['message'] == 'Success':
-                                self.log(
-                                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                                    f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                                    f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                                    f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
-                                    f"{Fore.GREEN + Style.BRIGHT}Is Completed{Style.RESET_ALL}"
-                                    f"{Fore.MAGENTA + Style.BRIGHT} ] [ Reward{Style.RESET_ALL}"
-                                    f"{Fore.WHITE + Style.BRIGHT} {mission['reward']['amount']} {mission['reward']['type']} {Style.RESET_ALL}"
-                                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                                )
+                        if mission and status == "available":
+                            complete = await self.complete_mission(token, mission_id, proxy)
+                            if complete and 'message' in complete:
+                                if complete['message'] == 'Success':
+                                    self.log(
+                                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                                        f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                                        f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
+                                        f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
+                                        f"{Fore.GREEN + Style.BRIGHT}Is Completed{Style.RESET_ALL}"
+                                        f"{Fore.MAGENTA + Style.BRIGHT} ] [ Reward{Style.RESET_ALL}"
+                                        f"{Fore.WHITE + Style.BRIGHT} {mission['reward']['amount']} {mission['reward']['type']} {Style.RESET_ALL}"
+                                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                                    )
+                                else:
+                                    self.log(
+                                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                                        f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                                        f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
+                                        f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
+                                        f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
+                                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                                    )
                             else:
                                 self.log(
                                     f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
@@ -438,56 +497,71 @@ class OpenLoop:
                                     f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
                                     f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
                                 )
+                            await asyncio.sleep(1)
+
                         else:
-                            self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
-                                f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
-                            )
-                        await asyncio.sleep(1)
+                            completed = True
 
-                    else:
-                        completed = True
-
-                if completed:
+                    if completed:
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
+                            f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                        )
+                else:
                     self.log(
                         f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                        f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
+                        f"{Fore.RED + Style.BRIGHT} Data Is None {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
                     )
-            else:
-                self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT} Data Is None {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                await asyncio.sleep(1)
+
+                print(
+                    f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
+                    f"{Fore.BLUE + Style.BRIGHT}Try to Sent Ping,{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} Wait... {Style.RESET_ALL}",
+                    end="\r",
+                    flush=True
                 )
-            await asyncio.sleep(1)
+                await asyncio.sleep(1)
 
-            print(
-                f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                f"{Fore.BLUE + Style.BRIGHT}Try to Sent Ping,{Style.RESET_ALL}"
-                f"{Fore.YELLOW + Style.BRIGHT} Wait... {Style.RESET_ALL}",
-                end="\r",
-                flush=True
-            )
-            await asyncio.sleep(1)
+                while True:
+                    ping = await self.send_ping(token, proxy)
+                    if not ping:
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
+                            f"{Fore.YELLOW + Style.BRIGHT}Ping Failed{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                        )
+                        await asyncio.sleep(1)
 
-            while True:
-                ping = await self.send_ping(token, proxy)
-                if not ping:
+                        print(
+                            f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
+                            f"{Fore.BLUE + Style.BRIGHT}Next Ping in 3 Minutes.{Style.RESET_ALL}"
+                            f"{Fore.YELLOW + Style.BRIGHT} Wait... {Style.RESET_ALL}",
+                            end="\r"
+                        )
+                        await asyncio.sleep(180)
+
+                        proxies = self.get_next_proxy()
+                        proxy = self.check_proxy_schemes(proxies)
+                        continue
+
                     self.log(
                         f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT}Ping Failed{Style.RESET_ALL}"
+                        f"{Fore.GREEN + Style.BRIGHT}Ping Success{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT}] [ Balance{Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} Total {ping['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                     )
                     await asyncio.sleep(1)
@@ -500,35 +574,13 @@ class OpenLoop:
                         end="\r"
                     )
                     await asyncio.sleep(180)
-
-                    proxies = self.get_next_proxy()
-                    proxy = self.check_proxy_schemes(proxies)
-                    continue
-
-                self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {profile['name']} {Style.RESET_ALL}"
-                    f"{Fore.GREEN + Style.BRIGHT}Ping Success{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}] [ Balance{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} Total {ping['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                )
-                await asyncio.sleep(1)
-
-                print(
-                    f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                    f"{Fore.BLUE + Style.BRIGHT}Next Ping in 3 Minutes.{Style.RESET_ALL}"
-                    f"{Fore.YELLOW + Style.BRIGHT} Wait... {Style.RESET_ALL}",
-                    end="\r"
-                )
-                await asyncio.sleep(180)
     
     async def main(self):
         try:
-            with open('tokens.txt', 'r') as file:
-                tokens = [line.strip() for line in file if line.strip()]
+            accounts = self.load_accounts()
+            if not accounts:
+                self.log(f"{Fore.RED}No accounts loaded from 'accounts.json'.{Style.RESET_ALL}")
+                return
 
             use_proxy_choice = await self.question()
 
@@ -540,7 +592,7 @@ class OpenLoop:
             self.welcome()
             self.log(
                 f"{Fore.GREEN + Style.BRIGHT}Account's Total: {Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT}{len(tokens)}{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT}{len(accounts)}{Style.RESET_ALL}"
             )
             self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
 
@@ -551,17 +603,16 @@ class OpenLoop:
             
             while True:
                 tasks = []
-                for token in tokens:
-                    token = token.strip()
-                    if token:
-                        tasks.append(self.process_accounts(token, use_proxy))
+                for account in accounts:
+                    email = account.get('Email')
+                    password = account.get('Password')
+
+                    if email and password:
+                        tasks.append(self.process_accounts(email, password, use_proxy))
 
                 await asyncio.gather(*tasks)
                 await asyncio.sleep(5)
 
-        except FileNotFoundError:
-            self.log(f"{Fore.RED}File 'tokens.txt' tidak ditemukan.{Style.RESET_ALL}")
-            return
         except Exception as e:
             self.log(f"{Fore.RED+Style.BRIGHT}Error: {e}{Style.RESET_ALL}")
 
