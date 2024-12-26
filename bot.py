@@ -139,7 +139,6 @@ class OpenLoop:
         try:
             async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                 async with session.post(url=url, headers=headers, data=data) as response:
-                    print(response.status, await response.text())
                     response.raise_for_status()
                     result = await response.json()
                     return result['data']['accessToken']
