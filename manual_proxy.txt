@@ -1,4 +1,4 @@
-ip:port (http or socks5 - change schemes in line 110)
+ip:port (http or socks5 - change schemes in line 108)
 http://ip:port
 socks4://ip:port
 socks5://ip:port
