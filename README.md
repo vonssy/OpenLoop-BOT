@@ -50,7 +50,7 @@ Pastikan Anda telah menginstal Python3.9 dan PIP.
   ```
 - **manual_proxy.txt:** Anda akan menemukan file `manual_proxy.txt` di dalam direktori proyek. Pastikan `manual_proxy.txt` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
   ```bash
-    ip:port #http or socks5 - change schemes in line 108
+    ip:port #http or socks5 - change schemes in line 99
     http://ip:port
     socks4://ip:port
     socks5://ip:port
