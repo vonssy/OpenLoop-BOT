@@ -377,13 +377,15 @@ class OpenLoop:
             profile = await self.user_profile(email, token, proxy)
             balance = await self.user_balance(email, token, proxy)
             if profile and balance: 
+                total_earning = balance.get('balances', {}).get('POINT', 0)
+                today_earning = balance.get('todayEarning', 0)
                 self.log(
                     f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}] [ Earning{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} Total {balance['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} Total {total_earning:.2f} Points {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} Today {balance['todayEarning']:.2f} Points {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} Today {today_earning:.2f} Points {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                 )
             else:
@@ -460,6 +462,7 @@ class OpenLoop:
             while True:
                 ping = await self.send_ping(email, token, proxy)
                 if ping:
+                    total_earning = ping.get('balances', {}).get('POINT', 0)
                     self.log(
                         f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
@@ -467,7 +470,7 @@ class OpenLoop:
                         f"{Fore.GREEN + Style.BRIGHT} Ping {ping_count} Success {Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT}With Proxy {proxy}{Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} Total {ping['balances']['POINT']:.2f} Points {Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT} Total {total_earning:.2f} Points {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                     )
                     ping_count += 1
