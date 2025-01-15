@@ -4,9 +4,9 @@ from aiohttp import (
     ClientTimeout
 )
 from aiohttp_socks import ProxyConnector
-from colorama import *
-from datetime import datetime
 from fake_useragent import FakeUserAgent
+from datetime import datetime
+from colorama import *
 import asyncio, random, json, os, pytz
 
 wib = pytz.timezone('Asia/Jakarta')
@@ -16,7 +16,6 @@ class OpenLoop:
         self.headers = {
             "Accept": "*/*",
             "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Host": "api.openloop.so",
             "Origin": "chrome-extension://effapmdildnpkiaeghlkicpfflpiambm",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
@@ -126,7 +125,48 @@ class OpenLoop:
         hide_local = local[:3] + '*' * 3 + local[-3:]
         return f"{hide_local}@{domain}"
     
-    async def user_login(self, email: str, password: str, proxy=None, retries=5):
+    def print_message(self, email: str):
+        return self.log(
+            f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+            f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+            f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+            f"{Fore.CYAN + Style.BRIGHT} Status: {Style.RESET_ALL}"
+            f"{Fore.RED + Style.BRIGHT}User Not Found{Style.RESET_ALL}"
+            f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+            f"{Fore.YELLOW + Style.BRIGHT}Register First{Style.RESET_ALL}"
+            f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
+        )
+    
+    async def renew_token(self, email: str, password: str, proxy=None):
+        token = await self.users_login(email, password, proxy)
+        if not token:
+            self.log(
+                f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                f"{Fore.RED + Style.BRIGHT} Renew Access Token Failed {Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
+            )
+            return
+        
+        self.log(
+            f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+            f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+            f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+            f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+            f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+            f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+            f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+            f"{Fore.RED + Style.BRIGHT} Renew Access Token Success {Style.RESET_ALL}"
+            f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
+        )
+        return token
+    
+    async def users_login(self, email: str, password: str, proxy=None, retries=3):
         url = "https://api.openloop.so/users/login"
         data = json.dumps({"username":email, "password":password})
         headers = {
@@ -140,58 +180,20 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                     async with session.post(url=url, headers=headers, data=data) as response:
+                        if response.status == 401:
+                            return self.print_message(email)
+                        
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']['accessToken']
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
-                    )
-                    await asyncio.sleep(2)
-                else:
-                    return None
+                    await asyncio.sleep(3)
+                    continue
+                
+                return None
     
-    async def user_profile(self, email: str, token: str, proxy=None, retries=5):
-        url = "https://api.openloop.so/users/profile"
-        headers = {
-            **self.headers,
-            "Authorization": f"Bearer {token}",
-        }
-        for attempt in range(retries):
-            connector = ProxyConnector.from_url(proxy) if proxy else None
-            try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
-                    async with session.get(url=url, headers=headers) as response:
-                        response.raise_for_status()
-                        result = await response.json()
-                        return result['data']
-            except (Exception, ClientResponseError) as e:
-                if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
-                    )
-                    await asyncio.sleep(2)
-                else:
-                    return None
-    
-    async def user_balance(self, email: str, token: str, proxy=None, retries=5):
+    async def users_balance(self, email: str, password: str, token: str, proxy=None, retries=3):
         url = "https://api.openloop.so/bandwidth/info"
         headers = {
             **self.headers,
@@ -202,27 +204,22 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                     async with session.get(url=url, headers=headers) as response:
+                        if response.status == 401:
+                            token = await self.renew_token(email, password, proxy)
+                            headers["Authorization"] = f"Bearer {token}"
+                            continue
+
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
-                    )
-                    await asyncio.sleep(2)
-                else:
-                    return None
+                    await asyncio.sleep(3)
+                    continue
+                
+                return None
         
-    async def mission_lists(self, email: str, token: str, proxy=None, retries=5):
+    async def users_mission_list(self, email: str, password: str, token: str, proxy=None, retries=3):
         url = "https://api.openloop.so/missions"
         headers = {
             **self.headers,
@@ -233,27 +230,22 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                     async with session.get(url=url, headers=headers) as response:
+                        if response.status == 401:
+                            token = await self.renew_token(email, password, proxy)
+                            headers["Authorization"] = f"Bearer {token}"
+                            continue
+
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']['missions']
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
-                    )
-                    await asyncio.sleep(2)
-                else:
-                    return None
+                    await asyncio.sleep(3)
+                    continue
+                
+                return None
         
-    async def complete_mission(self, email: str, token: str, mission_id: int, proxy=None, retries=5):
+    async def users_complete_mission(self, email: str, password: str, token: str, mission_id: int, proxy=None, retries=3):
         url = f"https://api.openloop.so/missions/{mission_id}/complete"
         headers = {
             **self.headers,
@@ -264,58 +256,197 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                     async with session.get(url=url, headers=headers) as response:
+                        if response.status == 401:
+                            token = await self.renew_token(email, password, proxy)
+                            headers["Authorization"] = f"Bearer {token}"
+                            continue
+
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
-                    )
-                    await asyncio.sleep(2)
-                else:
-                    return None
+                    await asyncio.sleep(3)
+                    continue
+                
+                return None
             
-    async def send_ping(self, email: str, token: str, proxy=None, retries=5):
+    async def users_send_ping(self, email: str, password: str, token: str, proxy=None, retries=3):
         url = "https://api.openloop.so/bandwidth/share"
         data = json.dumps({"quality":random.randint(60, 100)})
         headers = {
             **self.headers,
             "Authorization": f"Bearer {token}",
             "Content-Length": str(len(data)),
-            "Content-Type": "text/plain;charset=UTF-8",
+            "Content-Type": "application/json",
         }
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
                     async with session.post(url=url, headers=headers, data=data) as response:
+                        if response.status == 401:
+                            token = await self.renew_token(email, password, proxy)
+                            headers["Authorization"] = f"Bearer {token}"
+                            continue
+
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    print(
-                        f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                    await asyncio.sleep(3)
+                    continue
+                
+                return None
+            
+    async def process_users_earning(self, email: str, password: str, token: str, proxy=None):
+        while True:
+            balance = await self.users_balance(email, password, token, proxy)
+            if balance: 
+                today_earning = balance.get('todayEarning', 0)
+                total_earning = balance.get('balances', {}).get('POINT', 0)
+                self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning:.2f} PTS{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                )
+            else:
+                self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
+                    f"{Fore.RED + Style.BRIGHT}GET Earning Data Failed{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                )
+            await asyncio.sleep(10 * 60)
+
+    async def process_users_mission(self, email: str, password: str, token: str, proxy=None):
+        while True:
+            missions = await self.users_mission_list(email, password, token, proxy)
+            if missions is not None:
+                completed = False
+                for mission in missions:
+                    mission_id = str(mission['missionId'])
+                    title = mission['name']
+                    reward = mission['reward']['amount']
+                    type = mission['reward']['type']
+                    status = mission['status']
+
+                    if mission and status == "available":
+                        complete = await self.users_complete_mission(email, password, token, mission_id, proxy)
+                        if complete and complete['message'] == 'Success':
+                            self.log(
+                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT}{title}{Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                                f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT} Reward: {Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT}{reward} {type}{Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                            )
+                        else:
+                            self.log(
+                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
+                                f"{Fore.WHITE + Style.BRIGHT}{title}{Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                                f"{Fore.RED + Style.BRIGHT} Isn't Completed {Style.RESET_ALL}"
+                                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                            )
+                        await asyncio.sleep(1)
+
+                    else:
+                        completed = True
+
+                if completed:
+                    self.log(
+                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT}GET ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}",
-                        end="\r",
-                        flush=True
+                        f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                        f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
+                        f"{Fore.GREEN + Style.BRIGHT}All Available Mission Is Completed{Style.RESET_ALL}"
+                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
                     )
-                    await asyncio.sleep(2)
-                else:
-                    return None
+            else:
+                self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
+                    f"{Fore.RED + Style.BRIGHT}GET Mission Data Failed{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                )
+            await asyncio.sleep(24 * 60 * 60)
+
+    async def process_users_send_ping(self, email: str, password: str, token: str, use_proxy: bool, proxy=None):
+        ping_count = 1
+        while True:
+            print(
+                f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
+                f"{Fore.YELLOW + Style.BRIGHT}Try to Sent Ping...{Style.RESET_ALL}",
+                end="\r",
+                flush=True
+            )
+
+            ping = await self.users_send_ping(email, password, token, proxy)
+            if ping:
+                today_earning = ping.get('todayEarning', 0)
+                total_earning = ping.get('balances', {}).get('POINT', 0)
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                    f"{Fore.GREEN + Style.BRIGHT} PING {ping_count} Success {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning} PTS{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Total {total_earning} PTS{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
+                )
+            else:
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} PING {ping_count} Failed {Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
+                )
+                if use_proxy:   
+                    proxy = self.get_next_proxy()
+
+            ping_count += 1
+
+            print(
+                f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
+                f"{Fore.YELLOW + Style.BRIGHT}Wait For 3 Minutes For Next Ping...{Style.RESET_ALL}",
+                end="\r"
+            )
+            await asyncio.sleep(180)
         
     async def question(self):
         while True:
@@ -340,8 +471,6 @@ class OpenLoop:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
             
     async def process_accounts(self, email: str, password: str, use_proxy: bool):
-        hide_email = self.hide_email(email)
-        ping_count = 1
         proxy = None
 
         if use_proxy:
@@ -349,14 +478,18 @@ class OpenLoop:
 
         token = None
         while token is None:
-            token = await self.user_login(email, password, proxy)
+            token = await self.users_login(email, password, proxy)
             if not token:
                 self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT}Login Failed{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} With Proxy {proxy} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                    f"{Fore.RED + Style.BRIGHT} GET Access Token Failed {Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
                 )
                 await asyncio.sleep(1)
 
@@ -374,125 +507,11 @@ class OpenLoop:
                 proxy = self.get_next_proxy()
                 continue
             
-            profile = await self.user_profile(email, token, proxy)
-            balance = await self.user_balance(email, token, proxy)
-            if profile and balance: 
-                total_earning = balance.get('balances', {}).get('POINT', 0)
-                today_earning = balance.get('todayEarning', 0)
-                self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}] [ Earning{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} Total {total_earning:.2f} Points {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} Today {today_earning:.2f} Points {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                )
-            else:
-                self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT} Earning Data Is None {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                )
-            await asyncio.sleep(1)
-
-            missions = await self.mission_lists(email, token, proxy)
-            if missions is not None:
-                completed = False
-                for mission in missions:
-                    mission_id = str(mission['missionId'])
-                    status = mission['status']
-
-                    if mission and status == "available":
-                        complete = await self.complete_mission(email, token, mission_id, proxy)
-                        if complete and complete['message'] == 'Success':
-                            self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
-                                f"{Fore.GREEN + Style.BRIGHT}Is Completed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ] [ Reward{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {mission['reward']['amount']} {mission['reward']['type']} {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                            )
-                        else:
-                            self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}] [ Mission{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {mission['name']} {Style.RESET_ALL}"
-                                f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
-                            )
-                        await asyncio.sleep(1)
-
-                    else:
-                        completed = True
-
-                if completed:
-                    self.log(
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                        f"{Fore.GREEN + Style.BRIGHT} Available Mission Is Completed {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
-                    )
-            else:
-                self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT} Mission Data Is None {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                )
-            await asyncio.sleep(1)
-
-            print(
-                f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                f"{Fore.YELLOW + Style.BRIGHT}Try to Sent Ping...{Style.RESET_ALL}",
-                end="\r",
-                flush=True
+            await asyncio.gather(
+                self.process_users_earning(email, password, token, proxy),
+                self.process_users_mission(email, password, token, proxy),
+                self.process_users_send_ping(email, password, token, use_proxy, proxy)
             )
-            await asyncio.sleep(1)
-
-            while True:
-                ping = await self.send_ping(email, token, proxy)
-                if ping:
-                    total_earning = ping.get('balances', {}).get('POINT', 0)
-                    self.log(
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                        f"{Fore.GREEN + Style.BRIGHT} Ping {ping_count} Success {Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT}With Proxy {proxy}{Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT} ] [ Earning{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} Total {total_earning:.2f} Points {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                    )
-                    ping_count += 1
-                else:
-                    self.log(
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT} {hide_email} {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Ping {ping_count} Failed {Style.RESET_ALL}"
-                        f"{Fore.WHITE + Style.BRIGHT}With Proxy {proxy}{Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
-                    )
-                    if use_proxy:   
-                        proxy = self.get_next_proxy()
-
-                print(
-                    f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                    f"{Fore.YELLOW + Style.BRIGHT}Wait For 3 Minutes For Next Ping...{Style.RESET_ALL}",
-                    end="\r"
-                )
-                await asyncio.sleep(180)
     
     async def main(self):
         try:
@@ -530,7 +549,7 @@ class OpenLoop:
                         tasks.append(self.process_accounts(email, password, use_proxy))
 
                 await asyncio.gather(*tasks)
-                await asyncio.sleep(3)
+                await asyncio.sleep(10)
 
         except Exception as e:
             self.log(f"{Fore.RED+Style.BRIGHT}Error: {e}{Style.RESET_ALL}")
