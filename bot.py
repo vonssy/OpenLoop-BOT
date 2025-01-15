@@ -306,23 +306,23 @@ class OpenLoop:
                 today_earning = balance.get('todayEarning', 0)
                 total_earning = balance.get('balances', {}).get('POINT', 0)
                 self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT}Today {today_earning:.2f} PTS{Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                 )
             else:
                 self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
                     f"{Fore.RED + Style.BRIGHT}GET Earning Data Failed{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                 )
             await asyncio.sleep(10 * 60)
 
@@ -342,7 +342,7 @@ class OpenLoop:
                         complete = await self.users_complete_mission(email, password, token, mission_id, proxy)
                         if complete and complete['message'] == 'Success':
                             self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                                 f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                                 f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                                 f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
@@ -351,13 +351,13 @@ class OpenLoop:
                                 f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
                                 f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
                                 f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} Reward: {Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT} Reward: {Style.RESET_ALL}"
                                 f"{Fore.WHITE + Style.BRIGHT}{reward} {type}{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                             )
                         else:
                             self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                                 f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                                 f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                                 f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
@@ -365,7 +365,7 @@ class OpenLoop:
                                 f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
                                 f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
                                 f"{Fore.RED + Style.BRIGHT} Isn't Completed {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
                             )
                         await asyncio.sleep(1)
 
@@ -374,21 +374,21 @@ class OpenLoop:
 
                 if completed:
                     self.log(
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                        f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                         f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                         f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
                         f"{Fore.GREEN + Style.BRIGHT}All Available Mission Is Completed{Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                        f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                     )
             else:
                 self.log(
-                    f"{Fore.MAGENTA + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Mission: {Style.RESET_ALL}"
                     f"{Fore.RED + Style.BRIGHT}GET Mission Data Failed{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                 )
             await asyncio.sleep(24 * 60 * 60)
 
