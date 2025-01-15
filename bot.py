@@ -418,9 +418,9 @@ class OpenLoop:
                     f"{Fore.GREEN + Style.BRIGHT} PING {ping_count} Success {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning} PTS{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning:.2f} PTS{Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}Total {total_earning} PTS{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                 )
             else:
