@@ -192,32 +192,6 @@ class OpenLoop:
                     continue
                 
                 return None
-    
-    async def users_balance(self, email: str, password: str, token: str, proxy=None, retries=3):
-        url = "https://api.openloop.so/bandwidth/info"
-        headers = {
-            **self.headers,
-            "Authorization": f"Bearer {token}",
-        }
-        for attempt in range(retries):
-            connector = ProxyConnector.from_url(proxy) if proxy else None
-            try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=20)) as session:
-                    async with session.get(url=url, headers=headers) as response:
-                        if response.status == 401:
-                            token = await self.renew_token(email, password, proxy)
-                            headers["Authorization"] = f"Bearer {token}"
-                            continue
-
-                        response.raise_for_status()
-                        result = await response.json()
-                        return result['data']
-            except (Exception, ClientResponseError) as e:
-                if attempt < retries - 1:
-                    await asyncio.sleep(3)
-                    continue
-                
-                return None
         
     async def users_mission_list(self, email: str, password: str, token: str, proxy=None, retries=3):
         url = "https://api.openloop.so/missions"
@@ -298,33 +272,6 @@ class OpenLoop:
                     continue
                 
                 return None
-            
-    async def process_users_earning(self, email: str, password: str, token: str, proxy=None):
-        while True:
-            balance = await self.users_balance(email, password, token, proxy)
-            if balance: 
-                today_earning = balance.get('todayEarning', 0)
-                total_earning = balance.get('balances', {}).get('POINT', 0)
-                self.log(
-                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning:.2f} PTS{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
-                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
-                )
-            else:
-                self.log(
-                    f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT} {self.hide_email(email)} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT}GET Earning Data Failed{Style.RESET_ALL}"
-                    f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
-                )
-            await asyncio.sleep(10 * 60)
 
     async def process_users_mission(self, email: str, password: str, token: str, proxy=None):
         while True:
@@ -402,10 +349,10 @@ class OpenLoop:
                 end="\r",
                 flush=True
             )
+            await asyncio.sleep(3)
 
             ping = await self.users_send_ping(email, password, token, proxy)
             if ping:
-                today_earning = ping.get('todayEarning', 0)
                 total_earning = ping.get('balances', {}).get('POINT', 0)
                 self.log(
                     f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
@@ -418,8 +365,6 @@ class OpenLoop:
                     f"{Fore.GREEN + Style.BRIGHT} PING {ping_count} Success {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}Today {today_earning:.2f} PTS{Style.RESET_ALL}"
-                    f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} ]{Style.RESET_ALL}"
                 )
@@ -508,7 +453,6 @@ class OpenLoop:
                 continue
             
             await asyncio.gather(
-                self.process_users_earning(email, password, token, proxy),
                 self.process_users_mission(email, password, token, proxy),
                 self.process_users_send_ping(email, password, token, use_proxy, proxy)
             )
