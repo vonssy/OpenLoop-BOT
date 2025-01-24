@@ -15,7 +15,7 @@ OpenLoop.SO Sentry Node BOT
   - Auto Send Ping Every 3 Minutes
   - Multi Accounts With Threads
 
-- Note: OpenLoop Server may be experiencing problems receiving requests, please be patient.
+Note: OpenLoop Server may be experiencing problems receiving requests, please be patient.
 
 ## Requiremnets
 
