@@ -5,15 +5,17 @@ OpenLoop.SO Sentry Node BOT
 - Download Extension Here : [OpenLoop.SO Sentry Node Extension](https://chromewebstore.google.com/detail/openloopso-sentry-node-ex/effapmdildnpkiaeghlkicpfflpiambm)
 - Use Code : ol92f69d11
 
-## Fitur
+## Features
 
   - Auto Get Account Information
-  - Auto Run With Auto Proxy if u Choose 1 [Use [Monosans Proxy](https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt)]
-  - Auto Run With Manual Proxy if u Choose 2 [Paste Ur personal proxy in manual_proxy.txt]
-  - Auto Run Without Proxy if u Choose 3
-  - Auto Complete Tasks
+  - Auto Run With [Monosans](https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt) Proxy - Choose 1
+  - Auto Run With Private Proxy - Choose 2
+  - Auto Run Without Proxy - Choose 3
+  - Auto Complete Available Tasks
   - Auto Send Ping Every 3 Minutes
   - Multi Accounts With Threads
+
+- Note: OpenLoop Server may be experiencing problems receiving requests, please be patient.
 
 ## Requiremnets
 
@@ -50,11 +52,11 @@ OpenLoop.SO Sentry Node BOT
   ]
   ```
 
-- **manual_proxy.txt:** You will find the file `manual_proxy.txt` inside the project directory. Make sure `manual_proxy.txt` contains data that matches the format expected by the script. Here are examples of file formats:
+- **proxy.txt:** You will find the file `proxy.txt` inside the project directory. Make sure `proxy.txt` contains data that matches the format expected by the script. Here are examples of file formats:
   ```bash
-    ip:port # Default Protcol HTTP.
-    protocol://ip:port
-    protocol://user:pass@ip:port
+  ip:port # Default Protcol HTTP.
+  protocol://ip:port
+  protocol://user:pass@ip:port
   ```
 
 ## Run

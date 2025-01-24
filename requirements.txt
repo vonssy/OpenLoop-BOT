@@ -1,5 +1,5 @@
 aiohttp
 aiohttp-socks
-colorama
 fake-useragent
+colorama
 pytz
