@@ -121,9 +121,10 @@ class OpenLoop:
         return proxy
     
     def mask_account(self, account):
-        local, domain = account.split('@', 1)
-        mask_account = local[:3] + '*' * 3 + local[-3:]
-        return f"{mask_account}@{domain}"
+        if "@" in account:
+            local, domain = account.split('@', 1)
+            mask_account = local[:3] + '*' * 3 + local[-3:]
+            return f"{mask_account}@{domain}"
     
     def print_message(self, email, proxy, action, reason):
         self.log(
@@ -139,27 +140,6 @@ class OpenLoop:
             f"{Fore.RED + Style.BRIGHT} {str(reason)} {Style.RESET_ALL}"
             f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
         )
-
-    async def renew_token(self, email: str, password: str, use_proxy: bool, proxy=None):
-        token = None
-        while token is None:
-            token = await self.user_login(email, password, proxy)
-            if not token:
-                proxy = self.rotate_proxy_for_account(email) if use_proxy else None
-                continue
-            
-            self.log(
-                f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {self.mask_account(email)} {Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
-                f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
-                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
-                f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
-                f"{Fore.GREEN + Style.BRIGHT} Renew Access Token Success {Style.RESET_ALL}"
-                f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
-            )
-            return token
 
     def print_question(self):
         while True:
@@ -213,7 +193,7 @@ class OpenLoop:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.get(url=url, headers=headers) as response:
                         if response.status == 401:
-                            token = await self.renew_token(email, password, use_proxy, proxy)
+                            token = await self.get_access_token(email, password, use_proxy, proxy)
                             headers["Authorization"] = f"Bearer {token}"
                             continue
 
@@ -239,7 +219,7 @@ class OpenLoop:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.get(url=url, headers=headers) as response:
                         if response.status == 401:
-                            token = await self.renew_token(email, password, use_proxy, proxy)
+                            token = await self.get_access_token(email, password, use_proxy, proxy)
                             headers["Authorization"] = f"Bearer {token}"
                             continue
 
@@ -267,7 +247,7 @@ class OpenLoop:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.post(url=url, headers=headers, data=data) as response:
                         if response.status == 401:
-                            token = await self.renew_token(email, password, use_proxy, proxy)
+                            token = await self.get_access_token(email, password, use_proxy, proxy)
                             headers["Authorization"] = f"Bearer {token}"
                             continue
 
@@ -285,6 +265,27 @@ class OpenLoop:
                     proxy = self.rotate_proxy_for_account(email) if use_proxy else None
 
                 return None
+            
+    async def get_access_token(self, email: str, password: str, use_proxy: bool, proxy=None):
+        token = None
+        while token is None:
+            token = await self.user_login(email, password, proxy)
+            if not token:
+                proxy = self.rotate_proxy_for_account(email) if use_proxy else None
+                continue
+            
+            self.log(
+                f"{Fore.CYAN + Style.BRIGHT}[ Account:{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.mask_account(email)} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT} Proxy: {Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT}{proxy}{Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT}Status:{Style.RESET_ALL}"
+                f"{Fore.GREEN + Style.BRIGHT} GET Access Token Success {Style.RESET_ALL}"
+                f"{Fore.CYAN + Style.BRIGHT}]{Style.RESET_ALL}"
+            )
+            return token
 
     async def process_complete_missions(self, email: str, password: str, token: str, use_proxy: bool):
         while True:
@@ -385,13 +386,8 @@ class OpenLoop:
             
     async def process_accounts(self, email: str, password: str, use_proxy: bool):
         proxy = self.get_next_proxy_for_account(email) if use_proxy else None
-        token = None
-        while token is None:
-            token = await self.user_login(email, password, proxy)
-            if not token:
-                proxy = self.rotate_proxy_for_account(email) if use_proxy else None
-                continue
-
+        token = await self.user_login(email, password, proxy)
+        if token:
             tasks = []
             tasks.append(asyncio.create_task(self.process_complete_missions(email, password, token, use_proxy)))
             tasks.append(asyncio.create_task(self.process_send_ping(email, password, token, use_proxy)))
@@ -428,7 +424,7 @@ class OpenLoop:
                     email = account.get('Email')
                     password = account.get('Password')
 
-                    if email and password:
+                    if "@" in email and password:
                         tasks.append(self.process_accounts(email, password, use_proxy))
 
                 await asyncio.gather(*tasks)
