@@ -301,8 +301,8 @@ class OpenLoop:
                             )
                         else:
                             self.print_message(email, proxy, Fore.WHITE, 
-                                f"Mission {title}"
-                                f"{Fore.RED + Style.BRIGHT} Isn't Completed {Style.RESET_ALL}"
+                                f"Mission {title} "
+                                f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
                             )
                         await asyncio.sleep(1)
 
@@ -332,7 +332,7 @@ class OpenLoop:
             if ping:
                 total_earning = ping.get('balances', {}).get('POINT', 0)
                 self.print_message(email, proxy, Fore.GREEN, 
-                    "PING Success"
+                    "PING Success "
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT}Total {total_earning:.2f} PTS{Style.RESET_ALL}"
