@@ -252,7 +252,7 @@ class OpenLoop:
                 
                 return self.print_message(email, proxy, "Complete Available Mission Failed", e)
             
-    async def send_ping(self, email: str, password: str, token: str, quality: int, use_proxy: bool, proxy=None, retries=60):
+    async def send_ping(self, email: str, password: str, token: str, quality: int, use_proxy: bool, proxy=None, retries=5):
         url = "https://api.openloop.so/bandwidth/share"
         data = json.dumps({"quality":quality})
         headers = {
@@ -276,13 +276,13 @@ class OpenLoop:
                         return result['data']
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(5)
                     continue
 
                 self.print_message(email, proxy, "PING Failed", e)
 
-                if use_proxy:
-                    self.rotate_proxy_for_account(email)
+                if "invalid proxy response" in str(e).lower():
+                    proxy = self.rotate_proxy_for_account(email) if use_proxy else None
 
                 return None
 
