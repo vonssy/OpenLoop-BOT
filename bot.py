@@ -7,7 +7,7 @@ from aiohttp_socks import ProxyConnector
 from fake_useragent import FakeUserAgent
 from datetime import datetime
 from colorama import *
-import asyncio, random, json, os, pytz
+import asyncio, random, base64, json, os, pytz
 
 wib = pytz.timezone('Asia/Jakarta')
 
@@ -50,21 +50,6 @@ class OpenLoop:
         hours, remainder = divmod(seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
-    
-    def load_accounts(self):
-        filename = "accounts.json"
-        try:
-            if not os.path.exists(filename):
-                self.log(f"{Fore.RED}File {filename} Not Found.{Style.RESET_ALL}")
-                return
-
-            with open(filename, 'r') as file:
-                data = json.load(file)
-                if isinstance(data, list):
-                    return data
-                return []
-        except json.JSONDecodeError:
-            return []
     
     async def load_proxies(self, use_proxy_choice: bool):
         filename = "proxy.txt"
@@ -120,6 +105,17 @@ class OpenLoop:
         self.proxy_index = (self.proxy_index + 1) % len(self.proxies)
         return proxy
     
+    def decode_token(self, token: str):
+        try:
+            header, payload, signature = token.split(".")
+            decoded_payload = base64.urlsafe_b64decode(payload + "==").decode("utf-8")
+            parsed_payload = json.loads(decoded_payload)
+            username = parsed_payload["username"]
+            
+            return username
+        except Exception as e:
+            return None
+    
     def mask_account(self, account):
         if "@" in account:
             local, domain = account.split('@', 1)
@@ -160,26 +156,7 @@ class OpenLoop:
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
     
-    async def user_login(self, email: str, password: str, proxy=None):
-        url = "https://api.openloop.so/users/login"
-        data = json.dumps({"username":email, "password":password})
-        headers = {
-            **self.headers,
-            "Authorization": "Bearer",
-            "Content-Length": str(len(data)),
-            "Content-Type": "text/plain;charset=UTF-8",
-        }
-        connector = ProxyConnector.from_url(proxy) if proxy else None
-        try:
-            async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                async with session.post(url=url, headers=headers, data=data) as response:
-                    response.raise_for_status()
-                    result = await response.json()
-                    return result['data']['accessToken']
-        except (Exception, ClientResponseError) as e:
-            return self.print_message(email, proxy, Fore.RED, f"GET Access Token Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
-        
-    async def mission_lists(self, email: str, password: str, token: str, use_proxy: bool, proxy=None, retries=5):
+    async def mission_lists(self, token: str, username: str, proxy=None, retries=5):
         url = "https://api.openloop.so/missions"
         headers = {
             **self.headers,
@@ -190,11 +167,6 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.get(url=url, headers=headers) as response:
-                        if response.status == 401:
-                            token = await self.get_access_token(email, password, use_proxy)
-                            headers["Authorization"] = f"Bearer {token}"
-                            continue
-
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']['missions']
@@ -203,9 +175,9 @@ class OpenLoop:
                     await asyncio.sleep(5)
                     continue
                 
-                return self.print_message(email, proxy, Fore.RED, f"GET Available Mission Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
+                return self.print_message(username, proxy, Fore.RED, f"GET Available Mission Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
         
-    async def complete_missions(self, email: str, password: str, token: str, mission_id: int, use_proxy: bool, proxy=None, retries=5):
+    async def complete_missions(self, token: str, username: str, mission_id: int, proxy=None, retries=5):
         url = f"https://api.openloop.so/missions/{mission_id}/complete"
         headers = {
             **self.headers,
@@ -216,11 +188,6 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.get(url=url, headers=headers) as response:
-                        if response.status == 401:
-                            token = await self.get_access_token(email, password, use_proxy)
-                            headers["Authorization"] = f"Bearer {token}"
-                            continue
-
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
@@ -228,9 +195,9 @@ class OpenLoop:
                     await asyncio.sleep(5)
                     continue
                 
-                return self.print_message(email, proxy, Fore.RED, f"Complete Available Mission Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
+                return self.print_message(username, proxy, Fore.RED, f"Complete Available Mission Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
             
-    async def send_ping(self, email: str, password: str, token: str, quality: int, use_proxy: bool, proxy=None, retries=5):
+    async def send_ping(self, token: str, username: str, quality: int, use_proxy: bool, proxy=None, retries=5):
         url = "https://api.openloop.so/bandwidth/share"
         data = json.dumps({"quality":quality})
         headers = {
@@ -244,11 +211,6 @@ class OpenLoop:
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
                     async with session.post(url=url, headers=headers, data=data) as response:
-                        if response.status == 401:
-                            token = await self.get_access_token(email, password, use_proxy)
-                            headers["Authorization"] = f"Bearer {token}"
-                            continue
-
                         response.raise_for_status()
                         result = await response.json()
                         return result['data']
@@ -257,29 +219,17 @@ class OpenLoop:
                     await asyncio.sleep(5)
                     continue
 
-                self.print_message(email, proxy, Fore.RED, f"PING Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
+                self.print_message(username, proxy, Fore.RED, f"PING Failed: {Fore.YELLOW+Style.BRIGHT}{str(e)}")
 
                 if "invalid proxy response" in str(e).lower():
-                    proxy = self.rotate_proxy_for_account(email) if use_proxy else None
+                    proxy = self.rotate_proxy_for_account(username) if use_proxy else None
 
                 return None
             
-    async def get_access_token(self, email: str, password: str, use_proxy: bool):
-        proxy = self.get_next_proxy_for_account(email) if use_proxy else None
-        token = None
-        while token is None:
-            token = await self.user_login(email, password, proxy)
-            if not token:
-                proxy = self.rotate_proxy_for_account(email) if use_proxy else None
-                continue
-            
-            self.print_message(email, proxy, Fore.GREEN, "GET Access Token Success")
-            return token
-
-    async def process_complete_missions(self, email: str, password: str, token: str, use_proxy: bool):
+    async def process_complete_missions(self, token: str, username: str, use_proxy: bool):
         while True:
-            proxy = self.get_next_proxy_for_account(email) if use_proxy else None
-            missions = await self.mission_lists(email, password, token, use_proxy, proxy)
+            proxy = self.get_next_proxy_for_account(username) if use_proxy else None
+            missions = await self.mission_lists(token, username, proxy)
             if missions:
                 completed = False
                 for mission in missions:
@@ -290,9 +240,9 @@ class OpenLoop:
                     status = mission['status']
 
                     if mission and status == "available":
-                        complete = await self.complete_missions(email, password, token, mission_id, use_proxy, proxy)
+                        complete = await self.complete_missions(token, username, mission_id, proxy)
                         if "message" in complete and complete['message'] == "Success":
-                            self.print_message(email, proxy, Fore.WHITE, 
+                            self.print_message(username, proxy, Fore.WHITE, 
                                 f"Mission {title}"
                                 f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
                                 f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
@@ -300,7 +250,7 @@ class OpenLoop:
                                 f"{Fore.WHITE + Style.BRIGHT}{reward} {type}{Style.RESET_ALL}"
                             )
                         else:
-                            self.print_message(email, proxy, Fore.WHITE, 
+                            self.print_message(username, proxy, Fore.WHITE, 
                                 f"Mission {title} "
                                 f"{Fore.RED + Style.BRIGHT}Isn't Completed{Style.RESET_ALL}"
                             )
@@ -310,16 +260,16 @@ class OpenLoop:
                         completed = True
 
                 if completed:
-                    self.print_message(email, proxy, Fore.GREEN, 
+                    self.print_message(username, proxy, Fore.GREEN, 
                         "All Available Mission Is Completed"
                     )
 
             await asyncio.sleep(24 * 60 * 60)
 
-    async def process_send_ping(self, email: str, password: str, token: str, use_proxy: bool):
+    async def process_send_ping(self, token: str, username: str, use_proxy: bool):
         quality = random.randint(60, 80)
         while True:
-            proxy = self.get_next_proxy_for_account(email) if use_proxy else None
+            proxy = self.get_next_proxy_for_account(username) if use_proxy else None
             print(
                 f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
                 f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
@@ -328,10 +278,10 @@ class OpenLoop:
                 flush=True
             )
 
-            ping = await self.send_ping(email, password, token, quality, use_proxy, proxy)
+            ping = await self.send_ping(token, username, quality, use_proxy, proxy)
             if ping:
                 total_earning = ping.get('balances', {}).get('POINT', 0)
-                self.print_message(email, proxy, Fore.GREEN, 
+                self.print_message(username, proxy, Fore.GREEN, 
                     "PING Success "
                     f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.CYAN + Style.BRIGHT} Earning: {Style.RESET_ALL}"
@@ -346,20 +296,16 @@ class OpenLoop:
             )
             await asyncio.sleep(3 * 60)
             
-    async def process_accounts(self, email: str, password: str, use_proxy: bool):
-        token = await self.get_access_token(email, password, use_proxy)
-        if token:
-            tasks = []
-            tasks.append(self.process_complete_missions(email, password, token, use_proxy))
-            tasks.append(self.process_send_ping(email, password, token, use_proxy))
-            await asyncio.gather(*tasks)
+    async def process_accounts(self, token: str, username: str, use_proxy: bool):
+        tasks = []
+        tasks.append(self.process_complete_missions(token, username, use_proxy))
+        tasks.append(self.process_send_ping(token, username, use_proxy))
+        await asyncio.gather(*tasks)
     
     async def main(self):
         try:
-            accounts = self.load_accounts()
-            if not accounts:
-                self.log(f"{Fore.RED + Style.BRIGHT}No Accounts Loaded.{Style.RESET_ALL}")
-                return
+            with open('tokens.txt', 'r') as file:
+                tokens = [line.strip() for line in file if line.strip()]
             
             use_proxy_choice = self.print_question()
 
@@ -371,7 +317,7 @@ class OpenLoop:
             self.welcome()
             self.log(
                 f"{Fore.GREEN + Style.BRIGHT}Account's Total: {Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT}{len(accounts)}{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT}{len(tokens)}{Style.RESET_ALL}"
             )
 
             if use_proxy:
@@ -381,16 +327,17 @@ class OpenLoop:
 
             while True:
                 tasks = []
-                for account in accounts:
-                    email = account.get('Email')
-                    password = account.get('Password')
-
-                    if "@" in email and password:
-                        tasks.append(self.process_accounts(email, password, use_proxy))
+                for token in tokens:
+                    if token:
+                        username = self.decode_token(token)
+                        tasks.append(asyncio.create_task(self.process_accounts(token, username, use_proxy)))
 
                 await asyncio.gather(*tasks)
                 await asyncio.sleep(10)
 
+        except FileNotFoundError:
+            self.log(f"{Fore.RED}File 'tokens.txt' Not Found.{Style.RESET_ALL}")
+            return
         except Exception as e:
             self.log(f"{Fore.RED+Style.BRIGHT}Error: {e}{Style.RESET_ALL}")
 
