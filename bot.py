@@ -291,7 +291,7 @@ class OpenLoop:
             print(
                 f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
                 f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-                f"{Fore.BLUE + Style.BRIGHT}Wait For 3 Minutes For Next Ping...{Style.RESET_ALL}",
+                f"{Fore.BLUE + Style.BRIGHT}Wait For 15 Minutes For Next Ping...{Style.RESET_ALL}",
                 end="\r"
             )
             await asyncio.sleep(15 * 60)
