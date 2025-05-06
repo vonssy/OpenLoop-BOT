@@ -294,12 +294,13 @@ class OpenLoop:
                 f"{Fore.BLUE + Style.BRIGHT}Wait For 3 Minutes For Next Ping...{Style.RESET_ALL}",
                 end="\r"
             )
-            await asyncio.sleep(3 * 60)
+            await asyncio.sleep(15 * 60)
             
     async def process_accounts(self, token: str, username: str, use_proxy: bool):
-        tasks = []
-        tasks.append(self.process_complete_missions(token, username, use_proxy))
-        tasks.append(self.process_send_ping(token, username, use_proxy))
+        tasks = [
+            asyncio.create_task(self.process_complete_missions(token, username, use_proxy)),
+            asyncio.create_task(self.process_send_ping(token, username, use_proxy))
+        ]
         await asyncio.gather(*tasks)
     
     async def main(self):
