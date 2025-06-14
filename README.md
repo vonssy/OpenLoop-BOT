@@ -2,24 +2,24 @@
 OpenLoop.SO Sentry Node BOT
 
 - Register Here : [OpenLoop.SO Sentry Node Dashboard](https://openloop.so/auth/register?ref=ol92f69d11)
-- Download Extension Here : [OpenLoop.SO Sentry Node Extension](https://chromewebstore.google.com/detail/openloopso-sentry-node-ex/effapmdildnpkiaeghlkicpfflpiambm)
-- Use Code : ol92f69d11
+- Download [OpenLoop.SO Sentry Node Extension](https://chromewebstore.google.com/detail/openloopso-sentry-node-ex/effapmdildnpkiaeghlkicpfflpiambm)
+- Use Code `ol92f69d11`
 
 ## Features
 
   - Auto Get Account Information
-  - Auto Run With [Monosans](https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt) Proxy - Choose 1
-  - Auto Run With Private Proxy - Choose 2
-  - Auto Run Without Proxy - Choose 3
+  - Auto Run With [Free Proxyscrape](https://proxyscrape.com/free-proxy-list) Proxy - `Choose 1`
+  - Auto Run With Private Proxy - `Choose 2`
+  - Auto Run Without Proxy - `Choose 3`
+  - Auto Rotate Invalid Proxies - `y` or `n`
   - Auto Complete Available Tasks
-  - Auto Send Ping Every 3 Minutes
+  - Auto Send Ping Every 15 Minutes
   - Multi Accounts With Threads
-
-Note: OpenLoop Server may be experiencing problems receiving requests, please be patient.
 
 ## Requiremnets
 
 - Make sure you have Python3.9 or higher installed and pip.
+- 2captcha key (optional)
 
 ## Instalation
 
@@ -38,18 +38,59 @@ Note: OpenLoop Server may be experiencing problems receiving requests, please be
 
 ## Configuration
 
-- **tokens.txt:** You will find the file `tokens.txt` inside the project directory. Make sure `tokens.txt` contains data that matches the format expected by the script. Here are examples of file formats:
+- **2captcha_key.txt:** You will find the file `2captcha_key.txt` inside the project directory. Make sure `2captcha_key.txt` contains data that matches the format expected by the script. Here are examples of file formats:
   ```bash
-  your_access_token_1
-  your_access_token_2
+    your_2captcha_key
+  ```
+
+- **accounts.json:** You will find the file `accounts.json` inside the project directory. Make sure `accounts.json` contains data that matches the format expected by the script. Here are examples of file formats:
+  ```json
+    [
+        {
+            "Email": "your_email_address_1",
+            "Password": "your_password_1"
+        },
+        {
+            "Email": "your_email_address_2",
+            "Password": "your_password_2"
+        }
+    ]
+  ```
+
+### Note
+
+- If you don't have a 2cpatcha key, you can fetch the data manually and put it in tokens.json according to the format.
+
+<div style="text-align: center;">
+  <img src="image.png" alt="Image" width="500"/>
+</div>
+  
+- **tokens.json:** You will find the file `tokens.json` inside the project directory. Make sure `tokens.json` contains data that matches the format expected by the script. Here are examples of file formats:
+  ```json
+    [
+        {
+            "Email": "your_email_address_1",
+            "accessToken": "your_access_token_1"
+        },
+        {
+            "Email": "your_email_address_2",
+            "accessToken": "your_access_token_2"
+        }
+    ]
   ```
 
 - **proxy.txt:** You will find the file `proxy.txt` inside the project directory. Make sure `proxy.txt` contains data that matches the format expected by the script. Here are examples of file formats:
   ```bash
-  ip:port # Default Protcol HTTP.
-  protocol://ip:port
-  protocol://user:pass@ip:port
+    ip:port # Default Protcol HTTP.
+    protocol://ip:port
+    protocol://user:pass@ip:port
   ```
+
+## Setup
+
+```bash
+python setup.py #or python3 setup.py
+```
 
 ## Run
 
